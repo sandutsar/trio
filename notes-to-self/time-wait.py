@@ -26,18 +26,19 @@
 # Also, it must be set on listen2 before calling bind(), or it will conflict
 # with the lingering server1 socket.
 
-import socket
 import errno
+import socket
 
-import attr
+import attrs
 
-@attr.s(repr=False)
+
+@attrs.define(repr=False, slots=False)
 class Options:
-    listen1_early = attr.ib(default=None)
-    listen1_middle = attr.ib(default=None)
-    listen1_late = attr.ib(default=None)
-    server = attr.ib(default=None)
-    listen2 = attr.ib(default=None)
+    listen1_early = None
+    listen1_middle = None
+    listen1_late = None
+    server = None
+    listen2 = None
 
     def set(self, which, sock):
         value = getattr(self, which)
@@ -46,11 +47,12 @@ class Options:
 
     def describe(self):
         info = []
-        for f in attr.fields(self.__class__):
+        for f in attrs.fields(self.__class__):
             value = getattr(self, f.name)
             if value is not None:
-                info.append("{}={}".format(f.name, value))
+                info.append(f"{f.name}={value}")
         return "Set/unset: {}".format(", ".join(info))
+
 
 def time_wait(options):
     print(options.describe())
@@ -60,7 +62,7 @@ def time_wait(options):
     listen0 = socket.socket()
     listen0.bind(("127.0.0.1", 0))
     sockaddr = listen0.getsockname()
-    #print("  ", sockaddr)
+    # print("  ", sockaddr)
     listen0.close()
 
     listen1 = socket.socket()
@@ -97,6 +99,7 @@ def time_wait(options):
             raise
     else:
         print("  -> ok")
+
 
 time_wait(Options())
 time_wait(Options(listen1_early=True, server=True, listen2=True))

@@ -63,7 +63,7 @@ create complex transport configurations. Here's some examples:
 
 * The :mod:`trio.testing` module provides a set of :ref:`flexible
   in-memory stream object implementations <testing-streams>`, so if
-  you have a protocol implementation to test then you can can start
+  you have a protocol implementation to test then you can start
   two tasks, set up a virtual "socket" connecting them, and then do
   things like inject random-but-repeatable delays into the connection.
 
@@ -237,8 +237,7 @@ other constants and functions in the :mod:`ssl` module.
 
 .. warning:: Avoid instantiating :class:`ssl.SSLContext` directly.
    A newly constructed :class:`~ssl.SSLContext` has less secure
-   defaults than one returned by :func:`ssl.create_default_context`,
-   dramatically so before Python 3.6.
+   defaults than one returned by :func:`ssl.create_default_context`.
 
 Instead of using :meth:`ssl.SSLContext.wrap_socket`, you
 create a :class:`SSLStream`:
@@ -258,6 +257,55 @@ you call them before the handshake completes:
 
 .. autoexception:: NeedHandshakeError
 
+
+Datagram TLS support
+~~~~~~~~~~~~~~~~~~~~
+
+Trio also has support for Datagram TLS (DTLS), which is like TLS but
+for unreliable UDP connections. This can be useful for applications
+where TCP's reliable in-order delivery is problematic, like
+teleconferencing, latency-sensitive games, and VPNs.
+
+Currently, using DTLS with Trio requires PyOpenSSL. We hope to
+eventually allow the use of the stdlib `ssl` module as well, but
+unfortunately that's not yet possible.
+
+.. warning:: Note that PyOpenSSL is in many ways lower-level than the
+   `ssl` module – in particular, it currently **HAS NO BUILT-IN
+   MECHANISM TO VALIDATE CERTIFICATES**. We *strongly* recommend that
+   you use the `service-identity
+   <https://pypi.org/project/service-identity/>`__ library to validate
+   hostnames and certificates.
+
+.. autoclass:: DTLSEndpoint
+
+   .. automethod:: connect
+
+   .. automethod:: serve
+
+   .. automethod:: close
+
+.. autoclass:: DTLSChannel
+   :show-inheritance:
+
+   .. automethod:: do_handshake
+
+   .. automethod:: send
+
+   .. automethod:: receive
+
+   .. automethod:: close
+
+   .. automethod:: aclose
+
+   .. automethod:: set_ciphertext_mtu
+
+   .. automethod:: get_cleartext_mtu
+
+   .. automethod:: statistics
+
+.. autoclass:: DTLSChannelStatistics
+   :members:
 
 .. module:: trio.socket
 
@@ -396,7 +444,7 @@ Socket objects
          has begun. If :meth:`connect` is cancelled, and is unable to
          abort the connection attempt, then it will:
 
-         1. forcibly close the socket to prevent accidental re-use
+         1. forcibly close the socket to prevent accidental reuse
          2. raise :exc:`~trio.Cancelled`.
 
          tl;dr: if :meth:`connect` is cancelled then the socket is
@@ -455,6 +503,7 @@ Socket objects
    * :meth:`~socket.socket.share`
    * :meth:`~socket.socket.set_inheritable`
    * :meth:`~socket.socket.get_inheritable`
+
 
 .. currentmodule:: trio
 
@@ -582,6 +631,11 @@ Asynchronous path objects
 
 .. autoclass:: Path
    :members:
+   :inherited-members:
+
+.. autoclass:: PosixPath
+
+.. autoclass:: WindowsPath
 
 
 .. _async-file-objects:
@@ -589,9 +643,11 @@ Asynchronous path objects
 Asynchronous file objects
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: open_file
+.. Suppress type annotations here, they refer to lots of internal types.
+   The normal Python docs go into better detail.
+.. autofunction:: open_file(file, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=None, opener=None)
 
-.. autofunction:: wrap_file
+.. autofunction:: wrap_file(file)
 
 .. interface:: Asynchronous file interface
 
@@ -673,7 +729,13 @@ task and interact with it while it's running:
 
 .. autofunction:: trio.run_process
 
-.. autoclass:: trio.Process
+.. autoclass:: trio._subprocess.HasFileno(Protocol)
+
+   .. automethod:: fileno
+
+.. autoclass:: trio._subprocess.StrOrBytesPath
+
+.. autoclass:: trio.Process()
 
    .. autoattribute:: returncode
 
@@ -722,7 +784,7 @@ subprocess`` in order to access constants such as ``PIPE`` or
 
 Currently, Trio always uses unbuffered byte streams for communicating
 with a process, so it does not support the ``encoding``, ``errors``,
-``universal_newlines`` (alias ``text`` in 3.7+), and ``bufsize``
+``universal_newlines`` (alias ``text``), and ``bufsize``
 options.
 
 
